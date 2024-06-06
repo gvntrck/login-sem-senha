@@ -3,7 +3,7 @@
 Plugin Name: Passwordless Login
 Description: Permite login sem senha usando um link enviado por email.
 Version: 1.0
-Author: Seu Nome
+Author: Giovani Trueck
 */
 
 // Função para exibir o formulário de login sem senha
