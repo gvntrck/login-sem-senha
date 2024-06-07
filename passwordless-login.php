@@ -2,7 +2,7 @@
 /*
 Plugin Name: Passwordless Login
 Description: Permite login sem senha usando um link enviado por email.
-Version: 1.0
+Version: 3.0
 Author: Giovani Trueck
 */
 
@@ -20,9 +20,15 @@ function passwordless_login_form() {
                 $user = get_user_by('email', $email);
                 if ($user) {
                     $token = wp_generate_password(20, false);
-                    update_user_meta($user->ID, 'passwordless_login_token', $token);
-                    update_user_meta($user->ID, 'passwordless_login_token_created', time());
-                    $login_url = site_url() . '?passwordless_login=' . $token . '&user=' . $user->ID;
+                    $token_hash = wp_hash_password($token);
+                    $token_created = time();
+                    update_user_meta($user->ID, 'passwordless_login_token', $token_hash);
+                    update_user_meta($user->ID, 'passwordless_login_token_created', $token_created);
+                    $login_url = add_query_arg(array(
+                        'passwordless_login' => urlencode($token),
+                        'user' => $user->ID,
+                        'nonce' => wp_create_nonce('passwordless_login_' . $user->ID . '_' . $token_created)
+                    ), site_url());
                     $email_content = '<a href="' . esc_url($login_url) . '">Clique aqui para fazer login</a><br><br>';
                     $email_content .= 'O link tem validade de uma hora.';
 
@@ -92,14 +98,15 @@ add_shortcode('passwordless_login', 'passwordless_login_form');
 
 // Função para processar o login via link único
 function process_passwordless_login() {
-    if (isset($_GET['passwordless_login']) && isset($_GET['user'])) {
+    if (isset($_GET['passwordless_login']) && isset($_GET['user']) && isset($_GET['nonce'])) {
         $user_id = intval($_GET['user']);
         $token = sanitize_text_field($_GET['passwordless_login']);
+        $nonce = sanitize_text_field($_GET['nonce']);
         $saved_token = get_user_meta($user_id, 'passwordless_login_token', true);
         $token_created = get_user_meta($user_id, 'passwordless_login_token_created', true);
 
-        // Verifica se o token não expirou (1 hora de validade)
-        if ($token && hash_equals($token, $saved_token) && (time() - $token_created) < 3600) {
+        // Verifica se o nonce é válido e o token não expirou (1 hora de validade)
+        if (wp_verify_nonce($nonce, 'passwordless_login_' . $user_id . '_' . $token_created) && $token && wp_check_password($token, $saved_token) && (time() - $token_created) < 3600) {
             wp_set_auth_cookie($user_id);
             delete_user_meta($user_id, 'passwordless_login_token');
             delete_user_meta($user_id, 'passwordless_login_token_created');
@@ -112,4 +119,3 @@ function process_passwordless_login() {
 }
 add_action('init', 'process_passwordless_login');
 ?>
-
