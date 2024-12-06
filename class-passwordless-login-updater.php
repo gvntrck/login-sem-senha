@@ -10,7 +10,7 @@ class PasswordlessLoginUpdater {
 
     public function __construct($plugin_file) {
         $this->plugin_file = $plugin_file;
-        $this->github_url = 'https://github.com/gvntrck/plugin-login-sem-senha';
+        $this->github_url = 'https://api.github.com/repos/gvntrck/plugin-login-sem-senha';
         $this->current_version = $this->get_plugin_version();
         
         add_filter('pre_set_site_transient_update_plugins', [$this, 'check_for_updates']);

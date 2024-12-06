@@ -2,7 +2,7 @@
 /*
 Plugin Name: Passwordless Login
 Description: Permite login sem senha usando um link enviado por email.
-Version: 3.1
+Version: 3.2
 Author: Giovani Trueck
 */
 
