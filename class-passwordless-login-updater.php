@@ -51,9 +51,8 @@ class PasswordlessLoginUpdater {
             return $transient;
         }
 
-        // Remove o 'v' da tag se existir
-        $latest_version = str_replace('v', '', $release->tag_name);
-        $current_version = str_replace('v', '', $this->current_version);
+        $latest_version = $release->tag_name;
+        $current_version = $this->current_version;
 
         if (version_compare($latest_version, $current_version, '>')) {
             // Pega o primeiro asset (ZIP) da release
@@ -97,7 +96,7 @@ class PasswordlessLoginUpdater {
         }
 
         $plugin_data = get_plugin_data($this->plugin_file);
-        $latest_version = str_replace('v', '', $release->tag_name);
+        $latest_version = $release->tag_name;
         
         // Pega o primeiro asset (ZIP) da release
         $download_url = '';
