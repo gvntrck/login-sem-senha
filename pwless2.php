@@ -3,7 +3,7 @@
 Plugin Name: ZeroPass Login
 Plugin URI: https://github.com/gvntrck/plugin-login-sem-senha
 Description: Login sem complicações. Com o ZeroPass Login, seus usuários acessam sua plataforma com links seguros enviados por e-mail. Sem senhas, sem estresse – apenas segurança e simplicidade.
-Version: 3.8.8
+Version: 3.9.0
 Author: Giovani Tureck
 Author URI: https://projetoalfa.org
 License: GPL v2 or later
@@ -73,98 +73,167 @@ function passwordless_login_form() {
     $message = '';
     $email = '';
 
-    if (isset($_POST['passwordless_login']) && check_admin_referer('passwordless_login_nonce', 'passwordless_login_nonce_field')) {
-        $email = sanitize_email($_POST['user_email']);
-        if (!is_email($email)) {
-            $message = "<p class='error'>Email inválido.</p>";
-            pwless_log_attempt($email, 'erro_email_invalido');
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['user_email'])) {
+        if (!isset($_POST['pwless_nonce']) || !wp_verify_nonce($_POST['pwless_nonce'], 'pwless_login_action')) {
+            $message = '<div class="error">Erro de validação. Por favor, tente novamente.</div>';
         } else {
-            $user = get_user_by('email', $email);
-            if ($user) {
-                $token = wp_generate_password(20, false);
-                $token_hash = wp_hash_password($token);
-                $token_created = time();
-                update_user_meta($user->ID, 'passwordless_login_token', $token_hash);
-                update_user_meta($user->ID, 'passwordless_login_token_created', $token_created);
-
-                $login_url = add_query_arg(array(
-                    'passwordless_login' => urlencode($token),
-                    'user' => $user->ID,
-                    'nonce' => wp_create_nonce('passwordless_login_' . $user->ID . '_' . $token_created)
-                ), site_url());
-
-                $expiry_time = get_option('pwless_link_expiry', 60);
-                $email_template = get_option('pwless_email_template');
-                $email_content = str_replace(
-                    array('{login_url}', '{expiry_time}'),
-                    array($login_url, $expiry_time),
-                    $email_template
-                );
-
-                $headers = array('Content-Type: text/html; charset=UTF-8');
-                $subject = get_option('pwless_email_subject', 'Seu link de login');
+            // Verifica o reCAPTCHA se estiver habilitado
+            if (get_option('pwless_enable_recaptcha')) {
+                $recaptcha_response = isset($_POST['g-recaptcha-response']) ? $_POST['g-recaptcha-response'] : '';
+                $recaptcha_secret = get_option('pwless_recaptcha_secret_key');
                 
-                if (wp_mail($email, $subject, $email_content, $headers)) {
-                    $message = "<p class='success'>" . str_replace('{expiry_time}', $expiry_time, get_option('pwless_success_message')) . "</p>";
-                    pwless_log_attempt($email, 'email_enviado');
-                } else {
-                    $message = "<p class='error'>Erro ao enviar email.</p>";
-                    pwless_log_attempt($email, 'erro_envio_email');
+                $verify_response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', array(
+                    'body' => array(
+                        'secret' => $recaptcha_secret,
+                        'response' => $recaptcha_response
+                    )
+                ));
+
+                if (is_wp_error($verify_response) || empty($recaptcha_response)) {
+                    $message = '<div class="error">Por favor, complete o captcha.</div>';
+                    pwless_log_attempt($_POST['user_email'], 'Falha - Captcha inválido');
+                    return display_login_form($message, $email);
                 }
+
+                $response_body = json_decode(wp_remote_retrieve_body($verify_response));
+                if (!$response_body->success) {
+                    $message = '<div class="error">Verificação do captcha falhou. Por favor, tente novamente.</div>';
+                    pwless_log_attempt($_POST['user_email'], 'Falha - Captcha falhou');
+                    return display_login_form($message, $email);
+                }
+            }
+
+            $email = sanitize_email($_POST['user_email']);
+            if (!is_email($email)) {
+                $message = "<p class='error'>Email inválido.</p>";
+                pwless_log_attempt($email, 'erro_email_invalido');
             } else {
-                $message = "<p class='error'>" . get_option('pwless_error_message') . "</p>";
-                pwless_log_attempt($email, 'usuario_nao_encontrado');
+                $user = get_user_by('email', $email);
+                if ($user) {
+                    $token = wp_generate_password(20, false);
+                    $token_hash = wp_hash_password($token);
+                    $token_created = time();
+                    update_user_meta($user->ID, 'passwordless_login_token', $token_hash);
+                    update_user_meta($user->ID, 'passwordless_login_token_created', $token_created);
+
+                    $login_url = add_query_arg(array(
+                        'passwordless_login' => urlencode($token),
+                        'user' => $user->ID,
+                        'nonce' => wp_create_nonce('passwordless_login_' . $user->ID . '_' . $token_created)
+                    ), site_url());
+
+                    $expiry_time = get_option('pwless_link_expiry', 60);
+                    $email_template = get_option('pwless_email_template');
+                    $email_content = str_replace(
+                        array('{login_url}', '{expiry_time}'),
+                        array($login_url, $expiry_time),
+                        $email_template
+                    );
+
+                    $headers = array('Content-Type: text/html; charset=UTF-8');
+                    $subject = get_option('pwless_email_subject', 'Seu link de login');
+                    
+                    if (wp_mail($email, $subject, $email_content, $headers)) {
+                        $message = "<p class='success'>" . str_replace('{expiry_time}', $expiry_time, get_option('pwless_success_message')) . "</p>";
+                        pwless_log_attempt($email, 'email_enviado');
+                    } else {
+                        $message = "<p class='error'>Erro ao enviar email.</p>";
+                        pwless_log_attempt($email, 'erro_envio_email');
+                    }
+                } else {
+                    $message = "<p class='error'>" . get_option('pwless_error_message') . "</p>";
+                    pwless_log_attempt($email, 'usuario_nao_encontrado');
+                }
             }
         }
     }
 
+    return display_login_form($message, $email);
+}
+
+function display_login_form($message = '', $email = '') {
+    $form_email_label = get_option('pwless_form_email_label', 'Digite seu email:');
+    $form_button_text = get_option('pwless_form_button_text', 'Enviar link');
+    $enable_recaptcha = get_option('pwless_enable_recaptcha');
+    $recaptcha_site_key = get_option('pwless_recaptcha_site_key');
+
     ob_start();
     ?>
-    <form id="passwordless-login-form" method="post" class="reset-password-form" onsubmit="showLoader()">
-        <?php wp_nonce_field('passwordless_login_nonce', 'passwordless_login_nonce_field'); ?>
-        <label for="user_email"><?php echo esc_html(get_option('pwless_form_email_label')); ?></label>
-        <input type="email" name="user_email" placeholder="" value="<?php echo esc_attr($email); ?>" required>
-        <input type="submit" name="passwordless_login" value="<?php echo esc_attr(get_option('pwless_form_button_text')); ?>">
-        <p>O link enviado tem validade de <?php echo esc_html(get_option('pwless_link_expiry', 60)); ?> minuto(s).</p>
-        <div id="loader" style="display:none;">Enviando... <img src="<?php echo plugins_url('assets/loading.gif', __FILE__); ?>" alt="Carregando"></div>
-        <?php echo wp_kses_post($message); ?>
-    </form>
+    <div class="pwless-login-form-wrapper">
+        <?php if (!empty($message)) echo $message; ?>
+        
+        <form method="post" class="pwless-login-form">
+            <?php wp_nonce_field('pwless_login_action', 'pwless_nonce'); ?>
+            
+            <div class="pwless-form-group">
+                <label for="user_email"><?php echo esc_html($form_email_label); ?></label>
+                <input type="email" name="user_email" id="user_email" value="<?php echo esc_attr($email); ?>" required>
+            </div>
+
+            <?php if ($enable_recaptcha && $recaptcha_site_key): ?>
+                <div class="g-recaptcha" data-sitekey="<?php echo esc_attr($recaptcha_site_key); ?>"></div>
+                <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+            <?php endif; ?>
+
+            <div class="pwless-form-group">
+                <button type="submit"><?php echo esc_html($form_button_text); ?></button>
+            </div>
+        </form>
+    </div>
 
     <style>
-        .reset-password-form {
-            max-width: 400px;
-            margin: auto;
-            padding: 1em;
-            border: 1px solid #ccc;
-            border-radius: 1em;
-        }
-        .reset-password-form label {
-            display: block;
-            margin-bottom: 8px;
-        }
-        .reset-password-form input[type="email"], .reset-password-form input[type="submit"] {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 12px;
-        }
-        .reset-password-form .error {
-            color: red;
-        }
-        .reset-password-form .success {
-            color: green;
-        }
-        #loader img {
-            text-align: center;
-            margin-top: 10px;
-            height: 25px; /* Ajuste a altura conforme necessário */
-        }
+    .pwless-login-form-wrapper {
+        max-width: 400px;
+        margin: 20px auto;
+        padding: 20px;
+        background: #fff;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .pwless-login-form .pwless-form-group {
+        margin-bottom: 15px;
+    }
+    .pwless-login-form label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+    }
+    .pwless-login-form input[type="email"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .pwless-login-form button {
+        width: 100%;
+        padding: 10px;
+        background: #0073aa;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .pwless-login-form button:hover {
+        background: #005177;
+    }
+    .pwless-login-form .error {
+        color: #dc3232;
+        padding: 10px;
+        margin-bottom: 15px;
+        border-left: 4px solid #dc3232;
+        background: #fdf2f2;
+    }
+    .pwless-login-form .success {
+        color: #46b450;
+        padding: 10px;
+        margin-bottom: 15px;
+        border-left: 4px solid #46b450;
+        background: #ecf7ed;
+    }
+    .g-recaptcha {
+        margin-bottom: 15px;
+    }
     </style>
-
-    <script>
-        function showLoader() {
-            document.getElementById('loader').style.display = 'block';
-        }
-    </script>
     <?php
     return ob_get_clean();
 }
@@ -382,8 +451,6 @@ add_filter("plugin_action_links_$plugin", 'pwless_add_settings_link');
 function pwless_register_settings() {
     register_setting('pwless_options', 'pwless_email_subject');
     register_setting('pwless_options', 'pwless_email_template');
-    register_setting('pwless_options', 'pwless_from_email');
-    register_setting('pwless_options', 'pwless_from_name');
     register_setting('pwless_options', 'pwless_link_expiry', 'intval');
     register_setting('pwless_options', 'pwless_form_email_label');
     register_setting('pwless_options', 'pwless_form_button_text');
@@ -400,6 +467,11 @@ function pwless_register_settings() {
     register_setting('pwless_options', 'pwless_reset_button_text');
     register_setting('pwless_options', 'pwless_reset_form_title');
     register_setting('pwless_options', 'pwless_reset_description');
+
+    // Novas configurações para o reCAPTCHA
+    register_setting('pwless_options', 'pwless_recaptcha_site_key');
+    register_setting('pwless_options', 'pwless_recaptcha_secret_key');
+    register_setting('pwless_options', 'pwless_enable_recaptcha');
 }
 add_action('admin_init', 'pwless_register_settings');
 
@@ -458,6 +530,7 @@ function pwless_settings_page() {
                 <a href="#" class="nav-tab" data-tab="shortcode">Shortcodes</a>
                 <a href="#" class="nav-tab" data-tab="logs">Logs</a>
                 <a href="#" class="nav-tab" data-tab="sobre">Sobre</a>
+                <a href="#" class="nav-tab" data-tab="recaptcha">reCAPTCHA</a>
             </div>
 
             <div class="tab-content" id="email">
@@ -667,7 +740,34 @@ function pwless_settings_page() {
                     <tr>
                         <th scope="row">Versão</th>
                         <td>
-                            <strong>3.8.8</strong>
+                            <strong>3.9.0</strong>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="tab-content" id="recaptcha" style="display: none;">
+                <h2>Configurações do reCAPTCHA</h2>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">Chave do Site do reCAPTCHA</th>
+                        <td>
+                            <input type="text" name="pwless_recaptcha_site_key" value="<?php echo esc_attr(get_option('pwless_recaptcha_site_key')); ?>" class="regular-text">
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Chave Secreta do reCAPTCHA</th>
+                        <td>
+                            <input type="text" name="pwless_recaptcha_secret_key" value="<?php echo esc_attr(get_option('pwless_recaptcha_secret_key')); ?>" class="regular-text">
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Habilitar reCAPTCHA</th>
+                        <td>
+                            <label>
+                                <input type="checkbox" name="pwless_enable_recaptcha" value="1" <?php checked(1, get_option('pwless_enable_recaptcha'), true); ?>>
+                                Habilitar reCAPTCHA no formulário de login
+                            </label>
                         </td>
                     </tr>
                 </table>
@@ -693,7 +793,7 @@ function pwless_settings_page() {
             // Função para mostrar/esconder o botão de salvar
             function toggleSubmitButton(tab) {
                 var $submitWrapper = $('.submit-button-wrapper');
-                if (tab === 'shortcode' || tab === 'logs' || tab === 'sobre') {
+                if (tab === 'shortcode' || tab === 'logs' || tab === 'sobre' || tab === 'recaptcha') {
                     $submitWrapper.hide();
                 } else {
                     $submitWrapper.show();
