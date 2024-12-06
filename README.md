@@ -1,6 +1,6 @@
-# Passwordless Login - WordPress Plugin
+# ZeroPass Login - WordPress Plugin
 
-Plugin que permite login sem senha usando um link enviado por email.
+Login sem complicações. Com o ZeroPass Login, seus usuários acessam sua plataforma com links seguros enviados por e-mail. Sem senhas, sem estresse – apenas segurança e simplicidade.
 
 ## Descrição
 
