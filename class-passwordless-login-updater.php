@@ -51,11 +51,23 @@ class PasswordlessLoginUpdater {
             return $transient;
         }
 
-        if (version_compare($release->tag_name, $this->current_version, '>')) {
+        // Remove o 'v' da tag se existir
+        $latest_version = str_replace('v', '', $release->tag_name);
+        $current_version = str_replace('v', '', $this->current_version);
+
+        if (version_compare($latest_version, $current_version, '>')) {
+            // Pega o primeiro asset (ZIP) da release
+            $download_url = '';
+            if (!empty($release->assets) && isset($release->assets[0]->browser_download_url)) {
+                $download_url = $release->assets[0]->browser_download_url;
+            } else {
+                $download_url = $release->zipball_url; // Fallback para o zipball
+            }
+
             $transient->response[plugin_basename($this->plugin_file)] = (object)[
                 'slug' => plugin_basename($this->plugin_file),
-                'new_version' => $release->tag_name,
-                'package' => $release->zipball_url,
+                'new_version' => $latest_version,
+                'package' => $download_url,
                 'url' => $release->html_url
             ];
         }
@@ -85,16 +97,25 @@ class PasswordlessLoginUpdater {
         }
 
         $plugin_data = get_plugin_data($this->plugin_file);
+        $latest_version = str_replace('v', '', $release->tag_name);
+        
+        // Pega o primeiro asset (ZIP) da release
+        $download_url = '';
+        if (!empty($release->assets) && isset($release->assets[0]->browser_download_url)) {
+            $download_url = $release->assets[0]->browser_download_url;
+        } else {
+            $download_url = $release->zipball_url; // Fallback para o zipball
+        }
         
         $result = (object)[
             'name' => $plugin_data['Name'],
             'slug' => plugin_basename($this->plugin_file),
-            'version' => $release->tag_name,
+            'version' => $latest_version,
             'author' => '<a href="https://github.com/giovanitrevisol">Giovani Trueck</a>',
             'homepage' => $release->html_url,
             'requires' => $plugin_data['RequiresWP'] ?? '5.0',
             'tested' => $plugin_data['TestedUpTo'] ?? get_bloginfo('version'),
-            'download_link' => $release->zipball_url,
+            'download_link' => $download_url,
             'sections' => [
                 'description' => $plugin_data['Description'],
                 'changelog' => $release->body ?? 'See GitHub releases for changelog.'
