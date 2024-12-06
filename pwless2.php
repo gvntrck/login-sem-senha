@@ -3,7 +3,7 @@
 /*
 Plugin Name: ZeroPass Login
 Description: Login sem complicações. Com o ZeroPass Login, seus usuários acessam sua plataforma com links seguros enviados por e-mail. Sem senhas, sem estresse – apenas segurança e simplicidade.
-Version: 3.0.7
+Version: 3.7.0
 Author: Giovani Tureck (<a href="https://projetoalfa.org" target="_blank">projetoalfa.org</a>)
 */
 
