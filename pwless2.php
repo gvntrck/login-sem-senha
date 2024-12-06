@@ -1,9 +1,13 @@
 <?php
 /*
 Plugin Name: ZeroPass Login
+Plugin URI: https://github.com/gvntrck/plugin-login-sem-senha
 Description: Login sem complicações. Com o ZeroPass Login, seus usuários acessam sua plataforma com links seguros enviados por e-mail. Sem senhas, sem estresse – apenas segurança e simplicidade.
 Version: 3.8.5
-Author: Giovani Tureck (<a href="https://projetoalfa.org" target="_blank">projetoalfa.org</a>)
+Author: Giovani Tureck
+Author URI: https://projetoalfa.org
+License: GPL v2 or later
+Text Domain: zeropass-login
 */
 
 // Inclui a classe do atualizador

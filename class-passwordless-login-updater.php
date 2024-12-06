@@ -55,12 +55,20 @@ class PasswordlessLoginUpdater {
         $current_version = $this->current_version;
 
         if (version_compare($latest_version, $current_version, '>')) {
-            // Pega o primeiro asset (ZIP) da release
+            // Procura especificamente pelo arquivo zeropass-login.zip
             $download_url = '';
-            if (!empty($release->assets) && isset($release->assets[0]->browser_download_url)) {
-                $download_url = $release->assets[0]->browser_download_url;
-            } else {
-                $download_url = $release->zipball_url; // Fallback para o zipball
+            if (!empty($release->assets)) {
+                foreach ($release->assets as $asset) {
+                    if ($asset->name === 'zeropass-login.zip') {
+                        $download_url = $asset->browser_download_url;
+                        break;
+                    }
+                }
+            }
+            
+            // Se não encontrar o ZIP específico, usa o fallback
+            if (empty($download_url)) {
+                $download_url = $release->zipball_url;
             }
 
             $transient->response[plugin_basename($this->plugin_file)] = (object)[
@@ -98,12 +106,20 @@ class PasswordlessLoginUpdater {
         $plugin_data = get_plugin_data($this->plugin_file);
         $latest_version = $release->tag_name;
         
-        // Pega o primeiro asset (ZIP) da release
+        // Procura especificamente pelo arquivo zeropass-login.zip
         $download_url = '';
-        if (!empty($release->assets) && isset($release->assets[0]->browser_download_url)) {
-            $download_url = $release->assets[0]->browser_download_url;
-        } else {
-            $download_url = $release->zipball_url; // Fallback para o zipball
+        if (!empty($release->assets)) {
+            foreach ($release->assets as $asset) {
+                if ($asset->name === 'zeropass-login.zip') {
+                    $download_url = $asset->browser_download_url;
+                    break;
+                }
+            }
+        }
+        
+        // Se não encontrar o ZIP específico, usa o fallback
+        if (empty($download_url)) {
+            $download_url = $release->zipball_url;
         }
         
         $result = (object)[
