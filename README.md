@@ -28,7 +28,7 @@ Este plugin oferece uma maneira segura e conveniente de fazer login no WordPress
 
 ## Versão
 
-Versão atual: 3.3
+Versão atual: 3.4
 
 ## Autor
 
