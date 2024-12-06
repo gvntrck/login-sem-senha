@@ -673,7 +673,9 @@ function pwless_settings_page() {
                 </table>
             </div>
 
-            <?php submit_button('Salvar Configurações'); ?>
+            <div class="submit-button-wrapper">
+                <?php submit_button('Salvar Configurações'); ?>
+            </div>
         </form>
     </div>
 
@@ -688,6 +690,19 @@ function pwless_settings_page() {
 
     <script>
         jQuery(document).ready(function($) {
+            // Função para mostrar/esconder o botão de salvar
+            function toggleSubmitButton(tab) {
+                var $submitWrapper = $('.submit-button-wrapper');
+                if (tab === 'shortcode' || tab === 'logs' || tab === 'sobre') {
+                    $submitWrapper.hide();
+                } else {
+                    $submitWrapper.show();
+                }
+            }
+
+            // Inicializa com a aba ativa
+            toggleSubmitButton('email');
+
             $('.nav-tab').on('click', function(e) {
                 e.preventDefault();
                 var tab = $(this).data('tab');
@@ -697,6 +712,9 @@ function pwless_settings_page() {
                 
                 $('.tab-content').hide();
                 $('#' + tab).show();
+
+                // Mostra/esconde o botão de salvar
+                toggleSubmitButton(tab);
             });
         });
     </script>
