@@ -3,7 +3,7 @@
 /*
 Plugin Name: ZeroPass Login
 Description: Login sem complicações. Com o ZeroPass Login, seus usuários acessam sua plataforma com links seguros enviados por e-mail. Sem senhas, sem estresse – apenas segurança e simplicidade.
-Version: 3.7.0
+Version: 3.8.0
 Author: Giovani Tureck (<a href="https://projetoalfa.org" target="_blank">projetoalfa.org</a>)
 */
 
@@ -454,6 +454,7 @@ function pwless_settings_page() {
                 <a href="#" class="nav-tab" data-tab="reset">Reset de Senha</a>
                 <a href="#" class="nav-tab" data-tab="shortcode">Shortcodes</a>
                 <a href="#" class="nav-tab" data-tab="logs">Logs</a>
+                <a href="#" class="nav-tab" data-tab="sobre">Sobre</a>
             </div>
 
             <div class="tab-content" id="email">
@@ -655,6 +656,18 @@ function pwless_settings_page() {
                     echo '<p>Tabela de logs não encontrada. Ative o logging nas configurações de segurança.</p>';
                 }
                 ?>
+            </div>
+
+            <div class="tab-content" id="sobre" style="display: none;">
+                <h2>Sobre o Plugin</h2>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row">Versão</th>
+                        <td>
+                            <strong>3.8.0</strong>
+                        </td>
+                    </tr>
+                </table>
             </div>
 
             <?php submit_button('Salvar Configurações'); ?>
