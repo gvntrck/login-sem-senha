@@ -1,7 +1,6 @@
-<?php
 /*
-Plugin Name: Passwordless Login
-Description: Permite login sem senha usando um link enviado por email.
+Plugin Name: ZeroPass Login
+Description: Login sem complicações. Com o ZeroPass Login, seus usuários acessam sua plataforma com links seguros enviados por e-mail. Sem senhas, sem estresse – apenas segurança e simplicidade.
 Version: 3.4
 Author: Giovani Trueck
 */
@@ -728,4 +727,3 @@ function pwless_log_attempt($email, $status) {
         array('%s', '%s', '%s')
     );
 }
-?>
