@@ -793,7 +793,7 @@ function pwless_settings_page() {
             // Função para mostrar/esconder o botão de salvar
             function toggleSubmitButton(tab) {
                 var $submitWrapper = $('.submit-button-wrapper');
-                if (tab === 'shortcode' || tab === 'logs' || tab === 'sobre' || tab === 'recaptcha') {
+                if (tab === 'shortcode' || tab === 'logs' || tab === 'sobre') {
                     $submitWrapper.hide();
                 } else {
                     $submitWrapper.show();
