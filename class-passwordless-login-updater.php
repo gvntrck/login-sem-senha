@@ -126,7 +126,7 @@ class PasswordlessLoginUpdater {
             'name' => $plugin_data['Name'],
             'slug' => plugin_basename($this->plugin_file),
             'version' => $latest_version,
-            'author' => '<a href="https://github.com/giovanitrevisol">Giovani Tureck</a>',
+            'author' => '<a href="https://projetoalfa.org">Giovani Tureck</a>',
             'homepage' => $release->html_url,
             'requires' => $plugin_data['RequiresWP'] ?? '5.0',
             'tested' => $plugin_data['TestedUpTo'] ?? get_bloginfo('version'),
