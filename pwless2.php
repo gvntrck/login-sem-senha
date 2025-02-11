@@ -10,12 +10,6 @@ License: GPL v2 or later
 Text Domain: zeropass-login
 */
 
-// Inclui a classe do atualizador
-require_once plugin_dir_path(__FILE__) . 'class-passwordless-login-updater.php';
-
-// Inicia o atualizador
-new PasswordlessLoginUpdater(__FILE__);
-
 // Função para exibir o formulário de login sem senha
 function passwordless_login_form() {
     if (is_user_logged_in()) {
