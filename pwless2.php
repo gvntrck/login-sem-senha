@@ -737,6 +737,12 @@ function pwless_settings_page() {
                             <strong>3.9.0</strong>
                         </td>
                     </tr>
+                    <tr>
+                        <th scope="row">Desenvolvido por</th>
+                        <td>
+                            <a href="https://projetoalfa.org" target="_blank">Giovani Tureck</a>
+                        </td>
+                    </tr>
                 </table>
             </div>
 
