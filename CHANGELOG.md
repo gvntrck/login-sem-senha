@@ -5,3 +5,5 @@ alterado expiração de minutos para segundos
 
 
 
+## [Versão 4.0.0] - 12/02/2025
+Adicionado recurso de login unico para uma pessoa por vez possa acessar o sistema
