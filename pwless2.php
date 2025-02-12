@@ -116,11 +116,11 @@ function passwordless_login_form() {
                         'nonce' => wp_create_nonce('passwordless_login_' . $user->ID . '_' . $token_created)
                     ), site_url());
 
-                    $expiry_time = get_option('pwless_link_expiry', 60);
+                    $expiry_seconds = get_option('pwless_link_expiry', 3600);
                     $email_template = get_option('pwless_email_template');
                     $email_content = str_replace(
                         array('{login_url}', '{expiry_time}'),
-                        array($login_url, $expiry_time),
+                        array($login_url, $expiry_seconds),
                         $email_template
                     );
 
@@ -128,7 +128,7 @@ function passwordless_login_form() {
                     $subject = get_option('pwless_email_subject', 'Seu link de login');
                     
                     if (wp_mail($email, $subject, $email_content, $headers)) {
-                        $message = "<p class='success'>" . str_replace('{expiry_time}', $expiry_time, get_option('pwless_success_message')) . "</p>";
+                        $message = "<p class='success'>" . str_replace('{expiry_time}', $expiry_seconds, get_option('pwless_success_message')) . "</p>";
                         pwless_log_attempt($email, 'email_enviado');
                     } else {
                         $message = "<p class='error'>Erro ao enviar email.</p>";
@@ -388,13 +388,14 @@ function process_passwordless_login() {
         $nonce = sanitize_text_field($_GET['nonce']);
         $saved_token = get_user_meta($user_id, 'passwordless_login_token', true);
         $token_created = get_user_meta($user_id, 'passwordless_login_token_created', true);
-        $expiry_minutes = get_option('pwless_link_expiry', 60);
+        $expiry_seconds = get_option('pwless_link_expiry', 3600);
 
         // Verifica se o nonce é válido e o token não expirou
+        $token_age = time() - $token_created;
         if (wp_verify_nonce($nonce, 'passwordless_login_' . $user_id . '_' . $token_created) && 
             $token && 
             wp_check_password($token, $saved_token) && 
-            (time() - $token_created) < ($expiry_minutes * 60)) {
+            $token_age < $expiry_seconds) {
             
             wp_set_auth_cookie($user_id);
             delete_user_meta($user_id, 'passwordless_login_token');
@@ -494,11 +495,11 @@ function pwless_settings_page() {
     // Salva as configurações padrão se não existirem
     if (false === get_option('pwless_email_subject')) {
         update_option('pwless_email_subject', 'Seu link de login');
-        update_option('pwless_email_template', '<a href="{login_url}">Clique aqui para fazer login</a><br><br>O link tem validade de {expiry_time} minuto(s).');
-        update_option('pwless_link_expiry', 60); // 60 minutos (1 hora) como padrão
+        update_option('pwless_email_template', '<a href="{login_url}">Clique aqui para fazer login</a><br><br>O link tem validade de {expiry_time} segundo(s).');
+        update_option('pwless_link_expiry', 3600); // 3600 segundos (1 hora) como padrão
         update_option('pwless_form_email_label', 'Digite seu email:');
         update_option('pwless_form_button_text', 'Enviar link');
-        update_option('pwless_success_message', 'Link enviado para o email. O link tem validade de {expiry_time} minuto(s).');
+        update_option('pwless_success_message', 'Link enviado para o email. O link tem validade de {expiry_time} segundo(s).');
         update_option('pwless_error_message', 'Usuário não encontrado.');
         update_option('pwless_enable_logging', true);
         update_option('pwless_redirect_url', home_url());
@@ -593,10 +594,10 @@ function pwless_settings_page() {
                 <h2>Configurações de Segurança</h2>
                 <table class="form-table">
                     <tr>
-                        <th scope="row">Tempo de Expiração do Link (minutos)</th>
+                        <th scope="row">Tempo de Expiração do Link (segundos)</th>
                         <td>
-                            <input type="number" name="pwless_link_expiry" value="<?php echo esc_attr(get_option('pwless_link_expiry')); ?>" min="1" max="1440" class="small-text">
-                            <p class="description">Tempo em minutos (entre 1 e 1440 minutos, ou seja, até 24 horas)</p>
+                            <input type="number" name="pwless_link_expiry" value="<?php echo esc_attr(get_option('pwless_link_expiry')); ?>" min="1" max="86400" class="small-text">
+                            <p class="description">Tempo de expiração do link de login em segundos. Máximo: 86400 segundos (24 horas)</p>
                         </td>
                     </tr>
                     <tr>
