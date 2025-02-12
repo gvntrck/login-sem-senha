@@ -5,3 +5,5 @@ alterado expiração de minutos para segundos
 
 
 
+## [Versão 4.0.1] - 12/02/2025
+integração com plugin Loggedin
