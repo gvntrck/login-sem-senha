@@ -3,7 +3,7 @@
 Plugin Name: ZeroPass Login
 Plugin URI: https://github.com/gvntrck/plugin-login-sem-senha
 Description: Login sem complicações. Com o ZeroPass Login, seus usuários acessam sua plataforma com links seguros enviados por e-mail. Sem senhas, sem estresse – apenas segurança e simplicidade.
-Version: 4.0.0
+Version: 3.9.1
 Author: Giovani Tureck
 Author URI: https://projetoalfa.org
 License: GPL v2 or later
@@ -384,92 +384,41 @@ add_shortcode('passwordless_reset', 'pwless_reset_password_form');
 function process_passwordless_login() {
     if (isset($_GET['passwordless_login']) && isset($_GET['user']) && isset($_GET['nonce'])) {
         $user_id = intval($_GET['user']);
-        $token = $_GET['passwordless_login'];
-        $nonce = $_GET['nonce'];
+        $token = sanitize_text_field($_GET['passwordless_login']);
+        $nonce = sanitize_text_field($_GET['nonce']);
+        $saved_token = get_user_meta($user_id, 'passwordless_login_token', true);
         $token_created = get_user_meta($user_id, 'passwordless_login_token_created', true);
-
-        if (!wp_verify_nonce($nonce, 'passwordless_login_' . $user_id . '_' . $token_created)) {
-            wp_die('Link inválido ou expirado.');
-            return;
-        }
-
-        $stored_token = get_user_meta($user_id, 'passwordless_login_token', true);
-        if (!$stored_token || !wp_check_password($token, $stored_token)) {
-            wp_die('Token inválido.');
-            return;
-        }
-
         $expiry_seconds = get_option('pwless_link_expiry', 3600);
-        if (time() - intval($token_created) > $expiry_seconds) {
-            wp_die('Link expirado.');
-            return;
+
+        // Verifica se o nonce é válido e o token não expirou
+        $token_age = time() - $token_created;
+        if (wp_verify_nonce($nonce, 'passwordless_login_' . $user_id . '_' . $token_created) && 
+            $token && 
+            wp_check_password($token, $saved_token) && 
+            $token_age < $expiry_seconds) {
+            
+            wp_set_auth_cookie($user_id);
+            delete_user_meta($user_id, 'passwordless_login_token');
+            delete_user_meta($user_id, 'passwordless_login_token_created');
+            
+            $user = get_user_by('ID', $user_id);
+            pwless_log_attempt($user->user_email, 'login_sucesso');
+            
+            // Usa a URL de redirecionamento configurada ou a página inicial como fallback
+            $redirect_url = get_option('pwless_redirect_url');
+            if (empty($redirect_url)) {
+                $redirect_url = home_url();
+            }
+            wp_redirect($redirect_url);
+            exit;
+        } else {
+            $user = get_user_by('ID', $user_id);
+            pwless_log_attempt($user ? $user->user_email : 'unknown', 'link_invalido_ou_expirado');
+            echo '<p class="error">Link inválido ou expirado.</p>';
         }
-
-        // Gera um token único para a sessão
-        $session_token = wp_generate_password(32, false);
-        update_user_meta($user_id, 'pwless_active_session_token', $session_token);
-        update_user_meta($user_id, 'pwless_last_activity', time());
-        
-        // Armazena o token na sessão do usuário
-        if (!session_id()) {
-            session_start();
-        }
-        $_SESSION['pwless_session_token'] = $session_token;
-
-        // Remove o token de login único
-        delete_user_meta($user_id, 'passwordless_login_token');
-        delete_user_meta($user_id, 'passwordless_login_token_created');
-
-        // Faz o login do usuário
-        wp_set_auth_cookie($user_id);
-        wp_set_current_user($user_id);
-
-        // Redireciona para a URL configurada
-        $redirect_url = get_option('pwless_redirect_url', home_url());
-        wp_redirect($redirect_url);
-        exit;
     }
 }
 add_action('init', 'process_passwordless_login');
-
-// Adiciona função para verificar sessão única
-function pwless_check_single_session() {
-    if (is_user_logged_in()) {
-        if (!session_id()) {
-            session_start();
-        }
-
-        $user_id = get_current_user_id();
-        $stored_session_token = get_user_meta($user_id, 'pwless_active_session_token', true);
-        $current_session_token = isset($_SESSION['pwless_session_token']) ? $_SESSION['pwless_session_token'] : '';
-        $last_activity = get_user_meta($user_id, 'pwless_last_activity', true);
-
-        // Se não houver token na sessão ou o token não corresponder ao armazenado
-        if (empty($current_session_token) || $current_session_token !== $stored_session_token) {
-            wp_logout();
-            wp_redirect(home_url());
-            exit;
-        }
-
-        // Atualiza o timestamp da última atividade
-        update_user_meta($user_id, 'pwless_last_activity', time());
-    }
-}
-add_action('init', 'pwless_check_single_session');
-
-// Limpa os dados da sessão no logout
-function pwless_clear_session_data() {
-    $user_id = get_current_user_id();
-    if ($user_id) {
-        delete_user_meta($user_id, 'pwless_active_session_token');
-        delete_user_meta($user_id, 'pwless_last_activity');
-    }
-    
-    if (session_id()) {
-        session_destroy();
-    }
-}
-add_action('wp_logout', 'pwless_clear_session_data');
 
 // Adiciona menu na área administrativa
 function pwless_admin_menu() {
@@ -786,7 +735,7 @@ function pwless_settings_page() {
                     <tr>
                         <th scope="row">Versão</th>
                         <td>
-                            <strong>4.0.0</strong>
+                            <strong>3.9.1</strong>
                         </td>
                     </tr>
                     <tr>
