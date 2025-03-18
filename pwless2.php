@@ -397,6 +397,24 @@ function process_passwordless_login() {
             wp_check_password($token, $saved_token) && 
             $token_age < $expiry_seconds) {
             
+            // Verificar limites do plugin loggedin
+            if (class_exists('Loggedin')) {
+                $loggedin = new Loggedin();
+                
+                // Verificar se o usuário pode fazer login baseado na configuração
+                $check = $loggedin->validate_block_logic(true, '', '', $user_id);
+                
+                if ($check === false) {
+                    // Se retornou false, significa que a configuração está em BLOCK
+                    // e o usuário atingiu o limite
+                    echo '<p class="error">Você atingiu o limite máximo de logins simultâneos. Por favor, aguarde as sessões antigas expirarem ou faça logout em outro dispositivo.</p>';
+                    return;
+                }
+                // Se retornou true, pode ser:
+                // 1. Configuração ALLOW (vai deslogar sessões antigas automaticamente)
+                // 2. Configuração BLOCK mas ainda não atingiu o limite
+            }
+            
             wp_set_auth_cookie($user_id);
             delete_user_meta($user_id, 'passwordless_login_token');
             delete_user_meta($user_id, 'passwordless_login_token_created');
